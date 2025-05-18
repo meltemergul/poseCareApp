@@ -1,23 +1,79 @@
-import { Link } from "expo-router";
-import { Pressable, Text, View } from "react-native";
+import { Stack, useRouter } from "expo-router";
+import { useState } from "react";
+import { Pressable, Text, TextInput, View } from "react-native";
 
 export default function SelectMoveScreen() {
+    const router = useRouter();
+    const [selectedMove, setSelectedMove] = useState<string | null>(null);
+    const [reps, setReps] = useState("");
+    const isValidReps = /^\d+$/.test(reps) && parseInt(reps, 10) > 0;
+
+    const handleSelect = (movement: string) => {
+        setSelectedMove(movement);
+    };
+
+    const handleNavigate = () => {
+        const isValidReps = /^\d+$/.test(reps) && parseInt(reps, 10) > 0;
+        if (selectedMove && isValidReps) {
+            router.push(`/detail/${selectedMove}?reps=${reps}`);
+        } else {
+            alert("Lütfen geçerli bir tekrar sayısı girin.");
+        }
+    };
+
     return (
-        <View style={{ flex: 1, backgroundColor: "#000", justifyContent: "center", padding: 24 }}>
-            <Text style={{ color: "#fff", fontSize: 22, marginBottom: 20 }}>Hareket Seç</Text>
+        <>
+            <Stack.Screen
+                options={{
+                    title: "Hareket Seç",
+                    contentStyle: { backgroundColor: "#000" },
+                }}
+            />
+            <View style={{ flex: 1, backgroundColor: "#000", padding: 24 }}>
+                <Text style={{ color: "#fff", fontSize: 22, marginBottom: 10 }}>Hareket Seç</Text>
 
-            <Link href="/detail/Squat" asChild>
-                <Pressable style={styles.button}>
-                    <Text style={styles.text}>Squat</Text>
-                </Pressable>
-            </Link>
+                {["Squat", "Bridge"].map((movement) => (
+                    <Pressable
+                        key={movement}
+                        style={[
+                            styles.button,
+                            selectedMove === movement && { backgroundColor: "#B0FF35" },
+                        ]}
+                        onPress={() => handleSelect(movement)}
+                    >
+                        <Text style={[styles.text, selectedMove === movement && { color: "#000" }]}>{movement}</Text>
+                    </Pressable>
+                ))}
 
-            <Link href="/detail/Bridge" asChild>
-                <Pressable style={styles.button}>
-                    <Text style={styles.text}>Bridge</Text>
-                </Pressable>
-            </Link>
-        </View>
+                {selectedMove && (
+                    <>
+                        <Text style={{ color: "#fff", marginTop: 16 }}>Kaç tekrar yapmak istiyorsun?</Text>
+                        <TextInput
+                            value={reps}
+                            onChangeText={setReps}
+                            placeholder="Örn: 10"
+                            keyboardType="numeric"
+                            placeholderTextColor="#999"
+                            style={{
+                                borderColor: "#B0FF35",
+                                borderWidth: 1,
+                                padding: 10,
+                                borderRadius: 10,
+                                color: "#fff",
+                                marginTop: 8,
+                            }}
+                        />
+
+                        <Pressable
+                            style={[styles.button, { marginTop: 10, backgroundColor: "#B0FF35" }]}
+                            onPress={handleNavigate}
+                        >
+                            <Text style={{ color: "#000", fontSize: 18 }}>Devam Et</Text>
+                        </Pressable>
+                    </>
+                )}
+            </View>
+        </>
     );
 }
 

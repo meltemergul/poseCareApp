@@ -1,19 +1,20 @@
 import { CameraType, CameraView, useCameraPermissions } from 'expo-camera';
-import { useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 let isCapturing = false;
 
 export default function ExerciseCameraScreen() {
-    const { exercise } = useLocalSearchParams(); // squat / bridge
+    const { exercise, target } = useLocalSearchParams(); // squat / bridge
     const [permission, requestPermission] = useCameraPermissions();
     const cameraRef = useRef<CameraView | null>(null);
     const [facing, setFacing] = useState<CameraType>('front');
     const [status, setStatus] = useState<string | null>(null);
     const [angle, setAngle] = useState<number | null>(null);
     const [counts, setCounts] = useState({ correct: 0, incorrect: 0 });
-
+    const targetCount = parseInt(target as string, 10) || 10;
+    const router = useRouter();
     const toggleCamera = () => {
         setFacing(prev => (prev === 'front' ? 'back' : 'front'));
     };
@@ -30,7 +31,7 @@ export default function ExerciseCameraScreen() {
 
             if (!photo.base64) return;
 
-            const res = await fetch('http://192.168.1.235:5001/pose', {
+            const res = await fetch('http://192.168.1.120:5001/pose', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -57,14 +58,22 @@ export default function ExerciseCameraScreen() {
             isCapturing = false;
         }
     };
-
     useEffect(() => {
-        let interval: ReturnType<typeof setInterval>;
-        if (permission?.granted) {
-            interval = setInterval(captureAndSendFrame, 700);
+        const interval = setInterval(() => {
+            captureAndSendFrame();
+        }, 2000); // her 2 saniyede bir
+
+        if (counts.correct >= targetCount) {
+            router.replace({
+                pathname: "/completed",
+                params: {
+                    correct: counts.correct.toString(),
+                    incorrect: counts.incorrect.toString(),
+                    move: exercise as string,
+                },
+            });
         }
-        return () => clearInterval(interval);
-    }, [permission]);
+    }, [counts.correct]);
 
     if (!permission?.granted) {
         return (
@@ -78,30 +87,39 @@ export default function ExerciseCameraScreen() {
     }
 
     return (
-        <View style={styles.container}>
-            <CameraView
-                ref={cameraRef}
-                style={styles.cameraFrame}
-                facing={facing}
+        <>
+            <Stack.Screen
+                options={{
+                    title: "Pose Care",
+                    contentStyle: { backgroundColor: "#000" },
+                }}
             />
+            <View style={styles.container}>
+                <CameraView
+                    ref={cameraRef}
+                    style={styles.cameraFrame}
+                    facing={facing}
+                />
 
-            <View style={styles.overlayTop}>
-                <Text style={styles.statusText}>Egzersiz: {exercise}</Text>
-                <Text style={styles.statusText}>Durum: {status}</Text>
-                {typeof angle === 'number' && (
-                    <Text style={styles.statusText}>Açı: {angle.toFixed(2)}°</Text>
-                )}
-                <Text style={styles.countText}>
-                    ✅  Doğru: {counts.correct}   ❌ Yanlış: {counts.incorrect}
-                </Text>
-            </View>
+                <View style={styles.overlayTop}>
+                    <Text style={styles.statusText}>Egzersiz: {exercise}</Text>
+                    <Text style={styles.statusText}>Durum: {status}</Text>
+                    {typeof angle === 'number' && (
+                        <Text style={styles.statusText}>Açı: {angle.toFixed(2)}°</Text>
+                    )}
+                    <Text style={styles.countText}>
+                        ✅  Doğru: {counts.correct}   ❌ Yanlış: {counts.incorrect}
+                    </Text>
+                </View>
 
-            <View style={styles.overlayBottom}>
-                <TouchableOpacity onPress={toggleCamera} style={styles.button}>
-                    <Text style={styles.buttonText}>Kamerayı Çevir</Text>
-                </TouchableOpacity>
+
+                <View style={styles.overlayBottom}>
+                    <TouchableOpacity onPress={toggleCamera} style={styles.button}>
+                        <Text style={styles.buttonText}>Kamerayı Çevir</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
-        </View>
+        </>
     );
 }
 
@@ -146,14 +164,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     cameraFrame: {
-        width: 300,
-        height: 400,
-        borderRadius: 16,
-        overflow: 'hidden',
-        borderWidth: 2,
-        borderColor: '#A8B545',
-        alignSelf: 'center',
-        marginTop: 150,
+        ...StyleSheet.absoluteFillObject,
+
     }
 
 });
